@@ -44,8 +44,50 @@ def forward_selection(total_features):
     print(f"Finished search!! The best feature subset is {best_overall_set}, which has an accuracy of {best_overall_accuracy:.1f}%")
 
 def backward_elimination(total_features):
-    # MANI'S PART!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    return
+    print()
+    print("Welcome to Franklyn and Mani's Feature Selection Algorithm")
+
+    current_features = list(range(total_features))
+    starting_accuracy = temp_evaluate(current_features)
+    print(f"Using all features and 'random' evaluation, I get an accuracy of {starting_accuracy:.1f}%")
+    print("Beginning search.")
+    print()
+
+    best_overall_accuracy = starting_accuracy
+    best_overall_set = list(current_features)
+
+
+    for level in range(total_features - 1):
+        feature_to_remove_at_this_level = None
+        best_accuracy_so_far = 0.0
+
+
+        for f in current_features:
+            temp_features = [feat for feat in current_features if feat != f]
+            accuracy = temp_evaluate(temp_features)
+            print(f"Using feature(s) {temp_features} accuracy is {accuracy:.1f}%")
+
+            if accuracy > best_accuracy_so_far:
+                best_accuracy_so_far = accuracy
+                feature_to_remove_at_this_level = f
+
+        if feature_to_remove_at_this_level is not None:
+            current_features.remove(feature_to_remove_at_this_level)
+
+        print()
+        print(f"Feature set {current_features} was best, accuracy is {best_accuracy_so_far:.1f}%")
+
+        if best_accuracy_so_far < best_overall_accuracy:
+            print("(Warning, Accuracy has decreased!)")
+            print()
+
+        if best_accuracy_so_far > best_overall_accuracy:
+            best_overall_accuracy = best_accuracy_so_far
+            best_overall_set = list(current_features) 
+            print()
+
+    print(f"Finished search!! The best feature subset is {best_overall_set}, which has an accuracy of {best_overall_accuracy:.1f}%")
+
 
 def main():
     print("Type the number of the algorithm you want to run.")
