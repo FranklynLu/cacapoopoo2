@@ -1,4 +1,4 @@
-import random
+import time
 import math
 
 class NearestNeighbor:
@@ -30,6 +30,18 @@ def euclidean_distance(point1, point2):
     sum_of_squares = sum(squared_differences)
     distance = math.sqrt(sum_of_squares)
     return distance
+
+"""
+Remove it from the dataset (this is the test instance)
+
+Train NN on all remaining instances.
+
+Filter both the training and test instances so they contain only the selected features.
+
+Classify the test instance.
+
+Count how many predictions are correct.
+"""
 
 def leave_one_out_validation(dataset, feature_subset): # this calls the NN class and gives accuracy using NN
     correct = 0
@@ -70,7 +82,7 @@ def temp_evaluate(n): # our project 1 function, it will be used to call the real
 def forward_selection(total_features):
     print()
     print("Welcome to Franklyn and Mani's Feature Selection Algorithm")
-
+    total_start = time.time()
     starting_accuracy = temp_evaluate([])
     print(f"Using no features, I get an accuracy of {starting_accuracy:.1f}%")
     print("Beginning search.")
@@ -81,21 +93,25 @@ def forward_selection(total_features):
     best_overall_set = []
 
     for level in range(total_features):
+        level_start = time.time()
         feature_to_add_at_this_level = None
         best_accuracy_so_far = 0.0
 
         for f in range(total_features):
             if f not in current_features:
+                step_start = time.time()
                 temp_features = current_features + [f] # setup feature ID to print (note: feature # starts at 0)
                 accuracy = temp_evaluate(temp_features)
-                print(f"Using feature(s) {temp_features} accuracy is {accuracy:.1f}%")
+                step_time = time.time() - step_start
+                print(f"Using feature(s) {temp_features} accuracy is {accuracy:.1f}% (Time: {step_time:.4f} sec)")
                 if accuracy > best_accuracy_so_far: # update accuracy
                     best_accuracy_so_far = accuracy
                     feature_to_add_at_this_level = f
 
         current_features.append(feature_to_add_at_this_level)
+        level_time = time.time() - level_start
         print()
-        print(f"Feature set {current_features} was best, accuracy is {best_accuracy_so_far:.1f}%")
+        print(f"Feature set {current_features} was best, accuracy is {best_accuracy_so_far:.1f}% (Step Time: {level_time:.4f} sec)")
 
         # compares if accuracy increased or decreased
         if best_accuracy_so_far < best_overall_accuracy:
@@ -107,12 +123,14 @@ def forward_selection(total_features):
             best_overall_set = list(current_features) # new best pathway in a new list
             print()
 
-    print(f"Finished search!! The best feature subset is {best_overall_set}, which has an accuracy of {best_overall_accuracy:.1f}%")
+    total_time = time.time() - total_start
+
+    print(f"Finished search!! The best feature subset is {best_overall_set}, which has an accuracy of {best_overall_accuracy:.1f}% (Total time: {total_time:.4f} sec)")
 
 def backward_elimination(total_features):
     print()
     print("Welcome to Franklyn and Mani's Feature Selection Algorithm")
-
+    total_start = time.time()
     current_features = list(range(total_features))
     starting_accuracy = temp_evaluate(current_features)
     print(f"Using all features, I get an accuracy of {starting_accuracy:.1f}%")
@@ -124,14 +142,17 @@ def backward_elimination(total_features):
 
 
     for level in range(total_features - 1):
+        level_start = time.time()
         feature_to_remove_at_this_level = None
         best_accuracy_so_far = 0.0
 
 
         for f in current_features:
+            step_start = time.time()
             temp_features = [feat for feat in current_features if feat != f]
             accuracy = temp_evaluate(temp_features)
-            print(f"Using feature(s) {temp_features} accuracy is {accuracy:.1f}%")
+            step_time = time.time() - step_start
+            print(f"Using feature(s) {temp_features} accuracy is {accuracy:.1f}% (Time: {step_time:.4f} sec)")
 
             if accuracy > best_accuracy_so_far:
                 best_accuracy_so_far = accuracy
@@ -140,8 +161,9 @@ def backward_elimination(total_features):
         if feature_to_remove_at_this_level is not None:
             current_features.remove(feature_to_remove_at_this_level)
 
+        level_time = time.time() - level_start
         print()
-        print(f"Feature set {current_features} was best, accuracy is {best_accuracy_so_far:.1f}%")
+        print(f"Feature set {current_features} was best, accuracy is {best_accuracy_so_far:.1f}% (Step Time: {level_time:.4f} sec)")
 
         if best_accuracy_so_far < best_overall_accuracy:
             print("(Warning, Accuracy has decreased!)")
@@ -151,8 +173,9 @@ def backward_elimination(total_features):
             best_overall_accuracy = best_accuracy_so_far
             best_overall_set = list(current_features) 
             print()
-
-    print(f"Finished search!! The best feature subset is {best_overall_set}, which has an accuracy of {best_overall_accuracy:.1f}%")
+    
+    total_time = time.time() - total_start
+    print(f"Finished search!! The best feature subset is {best_overall_set}, which has an accuracy of {best_overall_accuracy:.1f}% (Total time: {total_time:.4f} sec)")
 
 def load_dataset(path): # [class] [feature1] [feature2] [feature3] ... [featureN] (PER FEATURE)
     data = []
@@ -161,11 +184,11 @@ def load_dataset(path): # [class] [feature1] [feature2] [feature3] ... [featureN
             parts = line.strip().split()
             if len(parts) == 0:
                 continue
-            row = list(map(float, parts))
+            row = list(map(float, parts)) # convert all item in parts to float, then putting it into a list
             data.append(row)
     return data
 
-def normalize_dataset(data):
+def normalize_dataset(data): # z score normalization (x - mean) / std
     # transpose for easier column operations
     cols = list(zip(*data))
     class_col = cols[0]
@@ -186,9 +209,16 @@ def normalize_dataset(data):
     for row in data:
         cls = row[0]
         feats = row[1:]
-        norm_feats = [(feats[i] - means[i]) / stds[i] if stds[i] != 0 else feats[i]
-                      for i in range(len(feats))]
-        normalized.append([cls] + norm_feats)
+
+        norm_feats = []  
+        for i in range(len(feats)):
+            if stds[i] != 0: 
+                normalized_value = (feats[i] - means[i]) / stds[i]
+            else: # std cant be 0, we just keep the original feature value
+                normalized_value = feats[i]
+    
+            norm_feats.append(normalized_value)
+        normalized.append([cls] + norm_feats) # class label contatenate with list of normalized features
 
     return normalized
 
