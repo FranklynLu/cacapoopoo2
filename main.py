@@ -1,4 +1,5 @@
 import random
+import math
 
 def temp_evaluate(n):
     return random.uniform(0, 100) # random float 0 to 100 (represents percentage)
@@ -88,6 +89,46 @@ def backward_elimination(total_features):
 
     print(f"Finished search!! The best feature subset is {best_overall_set}, which has an accuracy of {best_overall_accuracy:.1f}%")
 
+def load_dataset(path):
+    data = []
+    with open(path, "r") as f:
+        for line in f:
+            parts = line.strip().split()
+            if len(parts) == 0:
+                continue
+            row = list(map(float, parts))
+            data.append(row)
+    return data
+
+def normalize_dataset(data):
+    # transpose for easier column operations
+    cols = list(zip(*data))
+    class_col = cols[0]
+    features = cols[1:]
+
+    normalized = []
+    means = []
+    stds = []
+
+    # compute z-score for each feature column
+    for col in features:
+        m = sum(col) / len(col)
+        s = math.sqrt(sum((x - m)**2 for x in col) / len(col))
+        means.append(m)
+        stds.append(s)
+
+    # apply normalization
+    for row in data:
+        cls = row[0]
+        feats = row[1:]
+        norm_feats = [(feats[i] - means[i]) / stds[i] if stds[i] != 0 else feats[i]
+                      for i in range(len(feats))]
+        normalized.append([cls] + norm_feats)
+
+    return normalized
+
+def euclidean_distance(a, b):
+    return math.sqrt(sum((a[i] - b[i])**2 for i in range(len(a))))
 
 def main():
     print("Type the number of the algorithm you want to run.")
