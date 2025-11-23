@@ -89,7 +89,7 @@ def backward_elimination(total_features):
 
     print(f"Finished search!! The best feature subset is {best_overall_set}, which has an accuracy of {best_overall_accuracy:.1f}%")
 
-def load_dataset(path):
+def load_dataset(path): # [class] [feature1] [feature2] [feature3] ... [featureN] (PER FEATURE)
     data = []
     with open(path, "r") as f:
         for line in f:
@@ -131,20 +131,35 @@ def euclidean_distance(a, b):
     return math.sqrt(sum((a[i] - b[i])**2 for i in range(len(a))))
 
 def main():
+    small_data = load_dataset("small-test-dataset-2-2.txt")
+    large_data = load_dataset("large-test-dataset-2.txt")
+    small_norm = normalize_dataset(small_data) 
+    large_norm = normalize_dataset(large_data)
+    total_features_small = len(small_norm[0]) - 1 # 100 instances and 10 features
+    total_features_large = len(large_norm[0]) - 1 # 1000 instances, and 40 features
+
     print("Type the number of the algorithm you want to run.")
     print("1) Forward Selection")
     print("2) Backward Elimination")
     choice = int(input())
-    total_features = int(input("Please enter total number of features: "))
+    print("Please enter dataset type.")
+    print("1) Small Dataset")
+    print("2) Large Dataset")
+    choice2 = int(input())
 
-    while True:
-        if choice == 1:
-            forward_selection(total_features)
-            break
-        elif choice == 2:
-            backward_elimination(total_features)
-            break
-        else:
-            print("Enter valid choice")
+
+    if choice2 == 1:
+        total_features = total_features_small
+    elif choice2 == 2:
+        total_features = total_features_large
+    else:
+        print("Ivalid choice")
+
+    if choice == 1:
+        forward_selection(total_features)
+    elif choice == 2:
+        backward_elimination(total_features)
+    else:
+        print("Ivalid choice")
 
 main()
