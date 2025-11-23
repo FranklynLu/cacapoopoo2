@@ -1,18 +1,83 @@
 import random
 import math
 
-def temp_evaluate(n):
-    return random.uniform(0, 100) # random float 0 to 100 (represents percentage)
+class NearestNeighbor:
+    def __init__(self):
+        self.training = [] # memorization
+
+    def train(self, training_instances): # store training data
+        self.training = training_instances # each training instance: [class_label, feature1, feature2, ..., feature n]
+
+    def test(self, test_instance): # prediction
+        best_distance = float("inf")
+        best_class = None
+
+        for train in self.training: # what we do in each training
+            # train[0] = class, train[1:] = features
+            d = euclidean_distance(train[1:], test_instance[1:])
+            if d < best_distance: # update distance
+                best_distance = d
+                best_class = train[0]
+
+        return best_class
+    
+def euclidean_distance(point1, point2):
+    squared_differences = []
+    for i in range(len(point1)):
+        difference = point1[i] - point2[i]
+        squared_difference = difference ** 2
+        squared_differences.append(squared_difference)
+    sum_of_squares = sum(squared_differences)
+    distance = math.sqrt(sum_of_squares)
+    return distance
+
+def leave_one_out_validation(dataset, feature_subset): # this calls the NN class and gives accuracy using NN
+    correct = 0
+    n = len(dataset)
+
+    for leave_out in range(n):
+        train_set = [] 
+        for i in range(n): 
+            if i != leave_out: # skip the index we want to leave out
+                train_set.append(dataset[i]) # add the item to train_set
+
+        nn = NearestNeighbor() # calls the class
+        nn.train(train_set)
+
+        test_instance = dataset[leave_out]
+
+        filtered_test = [] # filter test instance
+        filtered_test.append(test_instance[0])
+        for f in feature_subset:
+            filtered_test.append(test_instance[1 + f])
+
+        filtered_train = [] # filter training set
+        for row in train_set: 
+            filtered_row = [row[0]]
+            for f in feature_subset:
+                filtered_row.append(row[1 + f])
+            filtered_train.append(filtered_row)
+
+        nn.training = filtered_train # replace training data with filtered version
+        pred_class = nn.test(filtered_test) # predict class
+        if pred_class == test_instance[0]: # prediction correct?
+            correct += 1
+    return (correct / n) * 100 # accuracy computation (from 0-100)
+
+def temp_evaluate(n): # our project 1 function, it will be used to call the real evaulation function
+    return leave_one_out_validation(global_dataset, n) # n is our feature subset
 
 def forward_selection(total_features):
     print()
     print("Welcome to Franklyn and Mani's Feature Selection Algorithm")
-    print(f"Using no features and 'random' evaluation, I get an accuracy of {temp_evaluate([]):.1f}%")
+
+    starting_accuracy = temp_evaluate([])
+    print(f"Using no features, I get an accuracy of {starting_accuracy:.1f}%")
     print("Beginning search.")
     print()
 
     current_features = []
-    best_overall_accuracy = 0.0
+    best_overall_accuracy = starting_accuracy
     best_overall_set = []
 
     for level in range(total_features):
@@ -50,7 +115,7 @@ def backward_elimination(total_features):
 
     current_features = list(range(total_features))
     starting_accuracy = temp_evaluate(current_features)
-    print(f"Using all features and 'random' evaluation, I get an accuracy of {starting_accuracy:.1f}%")
+    print(f"Using all features, I get an accuracy of {starting_accuracy:.1f}%")
     print("Beginning search.")
     print()
 
@@ -127,9 +192,6 @@ def normalize_dataset(data):
 
     return normalized
 
-def euclidean_distance(a, b):
-    return math.sqrt(sum((a[i] - b[i])**2 for i in range(len(a))))
-
 def main():
     small_data = load_dataset("small-test-dataset-2-2.txt")
     large_data = load_dataset("large-test-dataset-2.txt")
@@ -147,13 +209,16 @@ def main():
     print("2) Large Dataset")
     choice2 = int(input())
 
-
+    global global_dataset
     if choice2 == 1:
         total_features = total_features_small
+        global_dataset = small_norm
     elif choice2 == 2:
         total_features = total_features_large
+        global_dataset = large_norm
     else:
         print("Ivalid choice")
+        return
 
     if choice == 1:
         forward_selection(total_features)
@@ -161,5 +226,6 @@ def main():
         backward_elimination(total_features)
     else:
         print("Ivalid choice")
+        return
 
 main()
