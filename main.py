@@ -114,7 +114,7 @@ def forward_selection(total_features):
     print(f"Using no features, I get an accuracy of {starting_accuracy:.1f}%")
     print("Beginning search.")
     print()
-
+    
     current_features = []
     best_overall_accuracy = starting_accuracy
     best_overall_set = []
@@ -123,6 +123,7 @@ def forward_selection(total_features):
         level_start = time.time()
         feature_to_add_at_this_level = None
         best_accuracy_so_far = -1.0
+        print(f"--> Level {level + 1} of search")
 
         for f in range(total_features):
             if f not in current_features:
@@ -143,8 +144,9 @@ def forward_selection(total_features):
         current_features.append(feature_to_add_at_this_level)
         level_time = time.time() - level_start
         print()
+        print(f"Added feature {feature_to_add_at_this_level} at this level.")
         print(f"Feature set {current_features} was best, accuracy is {best_accuracy_so_far:.1f}% (Step Time: {level_time:.4f} sec)")
-
+        
         # compares if accuracy increased or decreased
         if best_accuracy_so_far < best_overall_accuracy:
             print("(Warning, Accuracy has decreased!)")
@@ -177,6 +179,7 @@ def backward_elimination(total_features):
         level_start = time.time()
         feature_to_remove_at_this_level = None
         best_accuracy_so_far = 0.0
+        print(f"--> Level {level + 1} of search")
 
 
         for f in current_features:
@@ -195,6 +198,7 @@ def backward_elimination(total_features):
 
         level_time = time.time() - level_start
         print()
+        print(f"Removed feature {feature_to_remove_at_this_level} at this level.")
         print(f"Feature set {current_features} was best, accuracy is {best_accuracy_so_far:.1f}% (Step Time: {level_time:.4f} sec)")
 
         if best_accuracy_so_far < best_overall_accuracy:
