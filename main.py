@@ -122,7 +122,7 @@ def forward_selection(total_features):
     for level in range(total_features):
         level_start = time.time()
         feature_to_add_at_this_level = None
-        best_accuracy_so_far = 0.0
+        best_accuracy_so_far = -1.0
 
         for f in range(total_features):
             if f not in current_features:
@@ -134,6 +134,11 @@ def forward_selection(total_features):
                 if accuracy > best_accuracy_so_far: # update accuracy
                     best_accuracy_so_far = accuracy
                     feature_to_add_at_this_level = f
+
+        if feature_to_add_at_this_level is None:
+            print("No feature improved accuracy at this level stopping search.")
+            break
+            
 
         current_features.append(feature_to_add_at_this_level)
         level_time = time.time() - level_start
