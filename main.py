@@ -43,25 +43,50 @@ Classify the test instance.
 Count how many predictions are correct.
 """
 
-def leave_one_out_validation(dataset, feature_subset): # this calls the NN class and gives accuracy using NN
-    correct = 0
+def leave_one_out_validation(dataset, feature_subset):
     n = len(dataset)
+    if n == 0:
+        return 0.0
+
+    # no featurs 
+    if not feature_subset:
+        correct = 0
+        for leave_out in range(n):
+            # training set without this instance
+            train_set = [dataset[i] for i in range(n) if i != leave_out]
+
+            #  majority class in training set
+            class_counts = {}
+            for row in train_set:
+                label = row[0]
+                class_counts[label] = class_counts.get(label, 0) + 1
+            majority_class = max(class_counts, key=class_counts.get)
+
+            # check prediction
+            if dataset[leave_out][0] == majority_class:
+                correct += 1
+
+        return (correct / n) * 100
+
+  
+    correct = 0
 
     for leave_out in range(n):
-        train_set = [] 
-        for i in range(n): 
-            if i != leave_out: # skip the index we want to leave out
-                train_set.append(dataset[i]) # add the item to train_set
+        train_set = []
+        for i in range(n):
+            if i != leave_out:
+                train_set.append(dataset[i])
 
         test_instance = dataset[leave_out]
 
-        filtered_test = [] # filter test instance
-        filtered_test.append(test_instance[0])
+        # filter test instance
+        filtered_test = [test_instance[0]]
         for f in feature_subset:
             filtered_test.append(test_instance[1 + f])
 
-        filtered_train = [] # filter training set
-        for row in train_set: 
+        # filter training set
+        filtered_train = []
+        for row in train_set:
             filtered_row = [row[0]]
             for f in feature_subset:
                 filtered_row.append(row[1 + f])
@@ -69,11 +94,14 @@ def leave_one_out_validation(dataset, feature_subset): # this calls the NN class
 
         nn = NearestNeighbor() # calls the class
         nn.train(filtered_train)
-        pred_class = nn.test(filtered_test) # predict class
+        pred_class = nn.test(filtered_test)# predict class
+
         if pred_class == test_instance[0]: # prediction correct?
             correct += 1
 
-    return (correct / n) * 100 # accuracy computation (from 0-100)
+    return (correct / n) * 100. # accuracy computation (from 0-100)
+
+
 
 def temp_evaluate(n): # our project 1 function, it will be used to call the real evaulation function
     return leave_one_out_validation(global_dataset, n) # n is our feature subset
