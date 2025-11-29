@@ -53,9 +53,6 @@ def leave_one_out_validation(dataset, feature_subset): # this calls the NN class
             if i != leave_out: # skip the index we want to leave out
                 train_set.append(dataset[i]) # add the item to train_set
 
-        nn = NearestNeighbor() # calls the class
-        nn.train(train_set)
-
         test_instance = dataset[leave_out]
 
         filtered_test = [] # filter test instance
@@ -70,10 +67,12 @@ def leave_one_out_validation(dataset, feature_subset): # this calls the NN class
                 filtered_row.append(row[1 + f])
             filtered_train.append(filtered_row)
 
-        nn.training = filtered_train # replace training data with filtered version
+        nn = NearestNeighbor() # calls the class
+        nn.train(filtered_train)
         pred_class = nn.test(filtered_test) # predict class
         if pred_class == test_instance[0]: # prediction correct?
             correct += 1
+
     return (correct / n) * 100 # accuracy computation (from 0-100)
 
 def temp_evaluate(n): # our project 1 function, it will be used to call the real evaulation function
@@ -184,7 +183,11 @@ def load_dataset(path): # [class] [feature1] [feature2] [feature3] ... [featureN
             parts = line.strip().split()
             if len(parts) == 0:
                 continue
-            row = list(map(float, parts)) # convert all item in parts to float, then putting it into a list
+            class_value = int(float(parts[0])) # class # is int
+            feature_values = []
+            for x in parts[1:]:
+                feature_values.append(float(x)) # convert all item in parts to float, then putting it into a list
+            row = [class_value] + feature_values
             data.append(row)
     return data
 
