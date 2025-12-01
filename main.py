@@ -262,13 +262,38 @@ def normalize_dataset(data): # z score normalization (x - mean) / std
 
     return normalized
 
+import matplotlib.pyplot as plt
+import numpy as np
+
+def plot_feature_pair(dataset, f1, f2):
+    data = np.array(dataset)
+    labels = data[:, 0]
+    x = data[:, 1 + f1]
+    y = data[:, 1 + f2]
+
+    plt.figure(figsize=(6, 6))
+    for cls in np.unique(labels):
+        mask = labels == cls
+        plt.scatter(x[mask], y[mask], label=f"Class {int(cls)}", marker='o')
+
+    plt.xlabel(f"Feature {f1}")
+    plt.ylabel(f"Feature {f2}")
+    plt.title(f"Feature {f1} vs Feature {f2}")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
 def main():
     small_data = load_dataset("small-test-dataset-2-2.txt")
     large_data = load_dataset("large-test-dataset-2.txt")
+    titanic_data = load_dataset("titanic clean-2.txt")
     small_norm = normalize_dataset(small_data) 
     large_norm = normalize_dataset(large_data)
+    titanic_norm = normalize_dataset(titanic_data)
     total_features_small = len(small_norm[0]) - 1 # 100 instances and 10 features
     total_features_large = len(large_norm[0]) - 1 # 1000 instances, and 40 features
+    total_features_titanic = len(titanic_norm[0]) - 1
 
     print("Type the number of the algorithm you want to run.")
     print("1) Forward Selection")
@@ -277,6 +302,7 @@ def main():
     print("Please enter dataset type.")
     print("1) Small Dataset")
     print("2) Large Dataset")
+    print("3) Titanic Dataset")
     choice2 = int(input())
 
     global global_dataset
@@ -286,9 +312,16 @@ def main():
     elif choice2 == 2:
         total_features = total_features_large
         global_dataset = large_norm
+    elif choice2 == 3:
+        total_features = total_features_titanic
+        global_dataset = titanic_norm
     else:
         print("Ivalid choice")
         return
+    
+    print()
+    print(f"This dataset has {total_features} features")
+    print(f"This dataset has {len(global_dataset)} instances")
 
     if choice == 1:
         forward_selection(total_features)
@@ -297,5 +330,7 @@ def main():
     else:
         print("Ivalid choice")
         return
+    
+    plot_feature_pair(global_dataset, 2, 4)
 
 main()
