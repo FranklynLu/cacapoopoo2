@@ -43,175 +43,62 @@ Classify the test instance.
 Count how many predictions are correct.
 """
 
-def leave_one_out_validation(dataset, feature_subset):
-    n = len(dataset)
-    if n == 0:
-        return 0.0
+class CrossValidation:
+    def __init__(self, classifier, X, y, feature_subset):
+        self.classifier = classifier
+        self.X = X
+        self.y = y
+        self.feature_subset = feature_subset
 
-    # no featurs 
-    if not feature_subset:
+    def leave_one_out_validation(self):
         correct = 0
-        for leave_out in range(n):
-            # training set without this instance
-            train_set = [dataset[i] for i in range(n) if i != leave_out]
+        n = len(self.X)
 
-            #  majority class in training set
-            class_counts = {}
-            for row in train_set:
-                label = row[0]
-                class_counts[label] = class_counts.get(label, 0) + 1
-            majority_class = max(class_counts, key=class_counts.get)
+        for i in range(n):
 
-            # check prediction
-            if dataset[leave_out][0] == majority_class:
+            start = time.time()
+
+            # leave-one-out split
+            train_X = [row[:] for j, row in enumerate(self.X) if j != i]
+            train_y = [label for j, label in enumerate(self.y) if j != i]
+
+            # build test row with selected features
+            test_x = [self.y[i]] + [self.X[i][f] for f in self.feature_subset]
+
+            # filter training rows to selected features
+            filtered_train_X = [
+                [train_y[k]] + [row[f] for f in self.feature_subset]
+                for k, row in enumerate(train_X)
+            ]
+
+            # train the classifier
+            self.classifier.train(filtered_train_X)
+
+            # predict
+            predicted = self.classifier.test(test_x)
+
+            if predicted == self.y[i]:
                 correct += 1
 
-        return (correct / n) * 100
+            end = time.time()
 
-  
-    correct = 0
+            print(f"Step {i}: true={self.y[i]}, predicted={predicted}, "
+                  f"time={(end - start)*1000:.3f} ms")
 
-    for leave_out in range(n):
-        train_set = []
-        for i in range(n):
-            if i != leave_out:
-                train_set.append(dataset[i])
+        return correct / n
 
-        test_instance = dataset[leave_out]
+def evaluate_subset(global_dataset, feature_subset):
 
-        # filter test instance
-        filtered_test = [test_instance[0]]
-        for f in feature_subset:
-            filtered_test.append(test_instance[1 + f])
+    # split dataset into X and y
+    y = [row[0] for row in global_dataset]
+    X = [row[1:] for row in global_dataset]
 
-        # filter training set
-        filtered_train = []
-        for row in train_set:
-            filtered_row = [row[0]]
-            for f in feature_subset:
-                filtered_row.append(row[1 + f])
-            filtered_train.append(filtered_row)
+    classifier = NearestNeighbor()
+    cv = CrossValidation(classifier, X, y, feature_subset)
+    acc = cv.leave_one_out_validation()
 
-        nn = NearestNeighbor() # calls the class
-        nn.train(filtered_train)
-        pred_class = nn.test(filtered_test)# predict class
-
-        if pred_class == test_instance[0]: # prediction correct?
-            correct += 1
-
-    return (correct / n) * 100. # accuracy computation (from 0-100)
-
-
-
-def temp_evaluate(n): # our project 1 function, it will be used to call the real evaulation function
-    return leave_one_out_validation(global_dataset, n) # n is our feature subset
-
-def forward_selection(total_features):
-    print()
-    print("Welcome to Franklyn and Mani's Feature Selection Algorithm")
-    total_start = time.time()
-    starting_accuracy = temp_evaluate([])
-    print(f"Using no features, I get an accuracy of {starting_accuracy:.1f}%")
-    print("Beginning search.")
-    print()
-    
-    current_features = []
-    best_overall_accuracy = starting_accuracy
-    best_overall_set = []
-
-    for level in range(total_features):
-        level_start = time.time()
-        feature_to_add_at_this_level = None
-        best_accuracy_so_far = -1.0
-        print(f"--> Level {level + 1} of search")
-
-        for f in range(total_features):
-            if f not in current_features:
-                step_start = time.time()
-                temp_features = current_features + [f] # setup feature ID to print (note: feature # starts at 0)
-                accuracy = temp_evaluate(temp_features)
-                step_time = time.time() - step_start
-                print(f"Using feature(s) {temp_features} accuracy is {accuracy:.1f}% (Time: {step_time:.4f} sec)")
-                if accuracy > best_accuracy_so_far: # update accuracy
-                    best_accuracy_so_far = accuracy
-                    feature_to_add_at_this_level = f
-
-        if feature_to_add_at_this_level is None:
-            print("No feature improved accuracy at this level stopping search.")
-            break
-            
-
-        current_features.append(feature_to_add_at_this_level)
-        level_time = time.time() - level_start
-        print()
-        print(f"Added feature {feature_to_add_at_this_level} at this level.")
-        print(f"Feature set {current_features} was best, accuracy is {best_accuracy_so_far:.1f}% (Step Time: {level_time:.4f} sec)")
-        
-        # compares if accuracy increased or decreased
-        if best_accuracy_so_far < best_overall_accuracy:
-            print("(Warning, Accuracy has decreased!)")
-            print()
-
-        if best_accuracy_so_far > best_overall_accuracy:
-            best_overall_accuracy = best_accuracy_so_far
-            best_overall_set = list(current_features) # new best pathway in a new list
-            print()
-
-    total_time = time.time() - total_start
-
-    print(f"Finished search!! The best feature subset is {best_overall_set}, which has an accuracy of {best_overall_accuracy:.1f}% (Total time: {total_time:.4f} sec)")
-
-def backward_elimination(total_features):
-    print()
-    print("Welcome to Franklyn and Mani's Feature Selection Algorithm")
-    total_start = time.time()
-    current_features = list(range(total_features))
-    starting_accuracy = temp_evaluate(current_features)
-    print(f"Using all features, I get an accuracy of {starting_accuracy:.1f}%")
-    print("Beginning search.")
-    print()
-
-    best_overall_accuracy = starting_accuracy
-    best_overall_set = list(current_features)
-
-
-    for level in range(total_features - 1):
-        level_start = time.time()
-        feature_to_remove_at_this_level = None
-        best_accuracy_so_far = 0.0
-        print(f"--> Level {level + 1} of search")
-
-
-        for f in current_features:
-            step_start = time.time()
-            temp_features = [feat for feat in current_features if feat != f]
-            accuracy = temp_evaluate(temp_features)
-            step_time = time.time() - step_start
-            print(f"Using feature(s) {temp_features} accuracy is {accuracy:.1f}% (Time: {step_time:.4f} sec)")
-
-            if accuracy > best_accuracy_so_far:
-                best_accuracy_so_far = accuracy
-                feature_to_remove_at_this_level = f
-
-        if feature_to_remove_at_this_level is not None:
-            current_features.remove(feature_to_remove_at_this_level)
-
-        level_time = time.time() - level_start
-        print()
-        print(f"Removed feature {feature_to_remove_at_this_level} at this level.")
-        print(f"Feature set {current_features} was best, accuracy is {best_accuracy_so_far:.1f}% (Step Time: {level_time:.4f} sec)")
-
-        if best_accuracy_so_far < best_overall_accuracy:
-            print("(Warning, Accuracy has decreased!)")
-            print()
-
-        if best_accuracy_so_far > best_overall_accuracy:
-            best_overall_accuracy = best_accuracy_so_far
-            best_overall_set = list(current_features) 
-            print()
-    
-    total_time = time.time() - total_start
-    print(f"Finished search!! The best feature subset is {best_overall_set}, which has an accuracy of {best_overall_accuracy:.1f}% (Total time: {total_time:.4f} sec)")
+    print(f"Accuracy using features {[f+1 for f in feature_subset]}: {acc:.4f}")   
+    return acc
 
 def load_dataset(path): # [class] [feature1] [feature2] [feature3] ... [featureN] (PER FEATURE)
     data = []
@@ -228,61 +115,20 @@ def load_dataset(path): # [class] [feature1] [feature2] [feature3] ... [featureN
             data.append(row)
     return data
 
-def normalize_dataset(data): # z score normalization (x - mean) / std
-    # transpose for easier column operations
-    cols = list(zip(*data))
-    class_col = cols[0]
-    features = cols[1:]
-
-    normalized = []
-    means = []
-    stds = []
-
-    # compute z-score for each feature column
-    for col in features:
-        m = sum(col) / len(col)
-        s = math.sqrt(sum((x - m)**2 for x in col) / len(col))
-        means.append(m)
-        stds.append(s)
-
-    # apply normalization
-    for row in data:
-        cls = row[0]
-        feats = row[1:]
-
-        norm_feats = []  
-        for i in range(len(feats)):
-            if stds[i] != 0: 
-                normalized_value = (feats[i] - means[i]) / stds[i]
-            else: # std cant be 0, we just keep the original feature value
-                normalized_value = feats[i]
-    
-            norm_feats.append(normalized_value)
-        normalized.append([cls] + norm_feats) # class label contatenate with list of normalized features
-
-    return normalized
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-def plot_feature_pair(dataset, f1, f2):
-    data = np.array(dataset)
-    labels = data[:, 0]
-    x = data[:, 1 + f1]
-    y = data[:, 1 + f2]
-
-    plt.figure(figsize=(6, 6))
-    for cls in np.unique(labels):
-        mask = labels == cls
-        plt.scatter(x[mask], y[mask], label=f"Class {int(cls)}", marker='o')
-
-    plt.xlabel(f"Feature {f1}")
-    plt.ylabel(f"Feature {f2}")
-    plt.title(f"Feature {f1} vs Feature {f2}")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-
+def normalize_dataset(X):
+    if not X:
+        return
+    n = len(X)
+    d = len(X[0])  # total columns (class + features)
+    for j in range(1, d):
+        mean = sum(X[i][j] for i in range(n)) / n
+        var = sum((X[i][j] - mean) ** 2 for i in range(n)) / n
+        stddev = math.sqrt(var)
+        if stddev == 0:
+            stddev = 1.0
+        for i in range(n):
+            X[i][j] = (X[i][j] - mean) / stddev
+    return X
 
 def main():
     small_data = load_dataset("small-test-dataset-2-2.txt")
@@ -293,16 +139,11 @@ def main():
     titanic_norm = normalize_dataset(titanic_data)
     total_features_small = len(small_norm[0]) - 1 # 100 instances and 10 features
     total_features_large = len(large_norm[0]) - 1 # 1000 instances, and 40 features
-    total_features_titanic = len(titanic_norm[0]) - 1
+    total_features_titanic = len(titanic_norm[0]) 
 
-    print("Type the number of the algorithm you want to run.")
-    print("1) Forward Selection")
-    print("2) Backward Elimination")
-    choice = int(input())
     print("Please enter dataset type.")
     print("1) Small Dataset")
     print("2) Large Dataset")
-    print("3) Titanic Dataset")
     choice2 = int(input())
 
     global global_dataset
@@ -312,9 +153,6 @@ def main():
     elif choice2 == 2:
         total_features = total_features_large
         global_dataset = large_norm
-    elif choice2 == 3:
-        total_features = total_features_titanic
-        global_dataset = titanic_norm
     else:
         print("Ivalid choice")
         return
@@ -322,15 +160,12 @@ def main():
     print()
     print(f"This dataset has {total_features} features")
     print(f"This dataset has {len(global_dataset)} instances")
-
-    if choice == 1:
-        forward_selection(total_features)
-    elif choice == 2:
-        backward_elimination(total_features)
-    else:
-        print("Ivalid choice")
-        return
     
-    plot_feature_pair(global_dataset, 2, 4)
+
+    print("Enter feature numbers separated by spaces (e.g., 3 5 7):")
+    user_input = input().strip()
+    feature_subset_original = list(map(int, user_input.split()))
+    feature_subset = [f - 1 for f in feature_subset_original]
+    evaluate_subset(global_dataset, feature_subset)
 
 main()
