@@ -1,5 +1,8 @@
 import time
 import math
+import matplotlib.pyplot as plt
+import numpy as np
+import os
 
 # This is based off index 1
 
@@ -101,6 +104,49 @@ def evaluate_subset(feature_subset):
 
     print(f"Accuracy using features {[f+1 for f in feature_subset]}: {acc:.4f}")   
     return acc
+
+def loocv_accuracy_with_all_features(dataset):
+    """
+    Convenience helper: given a dataset of [class, f1, f2, ...],
+    compute LOOCV 1-NN accuracy using ALL features.
+    """
+    y = [row[0] for row in dataset]
+    X = [row[1:] for row in dataset]
+    num_features = len(X[0])
+    feature_subset = list(range(num_features))  # indices 0..d-1 for X
+
+    classifier = NearestNeighbor()
+    cv = CrossValidation(classifier, X, y, feature_subset)
+    return cv.leave_one_out_validation()
+
+def evaluate_normalization_effect(small_raw, small_norm, large_raw, large_norm, titanic_raw, titanic_norm):
+    """
+    Prints a small table of LOOCV 1-NN accuracy with and without normalization.
+    Uses all features for each dataset.
+    """
+
+    small_raw_acc  = loocv_accuracy_with_all_features(small_raw)
+    small_norm_acc = loocv_accuracy_with_all_features(small_norm)
+    large_raw_acc  = loocv_accuracy_with_all_features(large_raw)
+    large_norm_acc = loocv_accuracy_with_all_features(large_norm)
+    titanic_raw_acc  = loocv_accuracy_with_all_features(titanic_raw)
+    titanic_norm_acc = loocv_accuracy_with_all_features(titanic_norm)   
+
+    print("\n=== Effect of Normalization (1-NN with all features, LOOCV) ===")
+    print(f"{'Dataset':<15} {'Normalized?':<12} {'Accuracy (%)':>12}")
+    print("-" * 43)
+    print(f"{'Small':<15} {'No':<12} {small_raw_acc:>12.1f}")
+    print(f"{'Small':<15} {'Yes':<12} {small_norm_acc:>12.1f}")
+    print(f"{'Large':<15} {'No':<12} {large_raw_acc:>12.1f}")
+    print(f"{'Large':<15} {'Yes':<12} {large_norm_acc:>12.1f}")
+    print(f"{'Titanic':<15} {'No':<12} {titanic_raw_acc:>12.1f}")
+    print(f"{'Titanic':<15} {'Yes':<12} {titanic_norm_acc:>12.1f}")
+    print("=============================================================\n")
+    
+
+    return small_raw_acc, small_norm_acc, large_raw_acc, large_norm_acc, titanic_raw_acc, titanic_norm_acc
+
+
 
 def forward_selection(total_features):
     print()
@@ -226,41 +272,81 @@ def load_dataset(path): # [class] [feature1] [feature2] [feature3] ... [featureN
             data.append(row)
     return data
 
-def normalize_dataset(X):
-    if not X:
-        return
-    n = len(X)
-    d = len(X[0])  # total columns (class + features)
+def normalize_dataset(data):
+   
+    if not data:
+        return []
+
+    n = len(data)
+    d = len(data[0])
+
+    # compute mean/std for each feature column (1..d-1)
+    means = []
+    stds = []
     for j in range(1, d):
-        mean = sum(X[i][j] for i in range(n)) / n
-        var = sum((X[i][j] - mean) ** 2 for i in range(n)) / n
-        stddev = math.sqrt(var)
-        if stddev == 0:
-            stddev = 1.0
-        for i in range(n):
-            X[i][j] = (X[i][j] - mean) / stddev
-    return X
+        col = [data[i][j] for i in range(n)]
+        mean = sum(col) / n
+        var = sum((x - mean) ** 2 for x in col) / n
+        std = math.sqrt(var)
+        if std == 0:
+            std = 1.0
+        means.append(mean)
+        stds.append(std)
 
-import matplotlib.pyplot as plt
-import numpy as np
+    # build normalized copy
+    norm = []
+    for i in range(n):
+        row = [data[i][0]]  # class label
+        for j in range(1, d):
+            m = means[j - 1]
+            s = stds[j - 1]
+            row.append((data[i][j] - m) / s)
+        norm.append(row)
 
-def plot_feature_pair(dataset, f1, f2):
+    return norm
+
+
+#plotting features
+def plot_feature_pair(dataset, feat_x, feat_y,
+                      dataset_label="Dataset",
+                      pair_label="",
+                      save_name=None,
+                      show=True):
+  
+
     data = np.array(dataset)
     labels = data[:, 0]
-    x = data[:, 1 + f1]
-    y = data[:, 1 + f2]
+    x = data[:, 1 + feat_x]
+    y = data[:, 1 + feat_y]
 
-    plt.figure(figsize=(6, 6))
+    fig, ax = plt.subplots(figsize=(6, 6))
     for cls in np.unique(labels):
         mask = labels == cls
-        plt.scatter(x[mask], y[mask], label=f"Class {int(cls)}", marker='o')
+        ax.scatter(x[mask], y[mask], label=f"Class {int(cls)}", marker="o")
 
-    plt.xlabel(f"Feature {f1}")
-    plt.ylabel(f"Feature {f2}")
-    plt.title(f"Feature {f1} vs Feature {f2}")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+  
+    ax.set_xlabel(f"Feature {feat_x}")
+    ax.set_ylabel(f"Feature {feat_y}")
+
+    title = dataset_label
+    if pair_label:
+        title += f" ({pair_label})"
+    ax.set_title(title)
+
+    ax.legend()
+    fig.tight_layout()
+
+    if save_name is not None:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        save_path = os.path.join(script_dir, save_name)
+        fig.savefig(save_path, dpi=300)
+        print(f"Saved plot to: {save_path}")
+
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
 
 def main():
     small_data = load_dataset("small-test-dataset-2-2.txt")
@@ -269,6 +355,11 @@ def main():
     small_norm = normalize_dataset(small_data) 
     large_norm = normalize_dataset(large_data)
     titanic_norm = normalize_dataset(titanic_data)
+
+    sr, sn, lr, ln,tr,tn = evaluate_normalization_effect(
+        small_data, small_norm, large_data, large_norm, titanic_data, titanic_norm
+    )
+
     total_features_small = len(small_norm[0]) - 1 # 100 instances and 10 features
     total_features_large = len(large_norm[0]) - 1 # 1000 instances, and 40 features
     total_features_titanic = len(titanic_norm[0]) - 1
@@ -300,6 +391,27 @@ def main():
     print()
     print(f"This dataset has {total_features} features")
     print(f"This dataset has {len(global_dataset)} instances")
+    
+  
+    labels = ["Small (raw)", "Small (norm)", "Large (raw)", "Large (norm)", "Titanic (raw)", "Titanic (norm)"]
+    accs = [sr, sn, lr, ln, tr, tn]
+
+    plt.figure(figsize=(6, 4))
+    plt.bar(range(len(labels)), accs)
+    plt.xticks(range(len(labels)), labels, rotation=20)
+    plt.ylabel("Accuracy (%)")
+    plt.title("Effect of Normalization on 1-NN Accuracy (All Features)")
+    plt.tight_layout()
+    plt.savefig("normalization_effect.png", dpi=300)
+    plt.show()
+    # Plot them
+
+    plot_feature_pair(large_norm,
+                  feat_x=15,  # feature 3 (0-based index)
+                  feat_y=12,  # feature 4
+                  dataset_label="large Dataset",
+                  pair_label="bad pair (15,12)",
+                  save_name="large_dataset_feature3_4.png")
 
     if choice == 1:
         forward_selection(total_features)
@@ -309,13 +421,7 @@ def main():
         print("Ivalid choice")
         return
     
-    #plot_feature_pair(global_dataset, 2, 4)
-
-    # print("Enter feature numbers separated by spaces (e.g., 3 5 7):")
-    # user_input = input().strip()
-    # feature_subset_original = list(map(int, user_input.split()))
-    # feature_subset = [f - 1 for f in feature_subset_original]
-    # evaluate_subset(feature_subset)
+   
 
 
 
