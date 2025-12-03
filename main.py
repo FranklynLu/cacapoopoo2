@@ -1,6 +1,8 @@
 import time
 import math
 
+# This is based off index 1
+
 class NearestNeighbor:
     def __init__(self):
         self.training = [] # memorization
@@ -125,7 +127,7 @@ def forward_selection(total_features):
                 temp_features = current_features + [f] # setup feature ID to print (note: feature # starts at 0)
                 accuracy = evaluate_subset(temp_features)
                 step_time = time.time() - step_start
-                print(f"Using feature(s) {temp_features} accuracy is {accuracy:.1f}% (Time: {step_time:.4f} sec)")
+                print(f"Using feature(s) {[x+1 for x in temp_features]} accuracy is {accuracy:.1f}% (Time: {step_time:.4f} sec)")
                 if accuracy > best_accuracy_so_far: # update accuracy
                     best_accuracy_so_far = accuracy
                     feature_to_add_at_this_level = f
@@ -138,8 +140,8 @@ def forward_selection(total_features):
         current_features.append(feature_to_add_at_this_level)
         level_time = time.time() - level_start
         print()
-        print(f"Added feature {feature_to_add_at_this_level} at this level.")
-        print(f"Feature set {current_features} was best, accuracy is {best_accuracy_so_far:.1f}% (Step Time: {level_time:.4f} sec)")
+        print(f"Added feature {feature_to_add_at_this_level + 1} at this level.")
+        print(f"Feature set {[x+1 for x in current_features]} was best, accuracy is {best_accuracy_so_far:.1f}% (Step Time: {level_time:.4f} sec)")
         
         # compares if accuracy increased or decreased
         if best_accuracy_so_far < best_overall_accuracy:
@@ -153,7 +155,8 @@ def forward_selection(total_features):
 
     total_time = time.time() - total_start
 
-    print(f"Finished search!! The best feature subset is {best_overall_set}, which has an accuracy of {best_overall_accuracy:.1f}% (Total time: {total_time:.4f} sec)")
+    print(f"Finished search!! The best feature subset is {[f+1 for f in best_overall_set]}, "
+      f"which has an accuracy of {best_overall_accuracy:.1f}% (Total time: {total_time:.4f} sec)")
 
 def backward_elimination(total_features):
     print()
@@ -181,7 +184,7 @@ def backward_elimination(total_features):
             temp_features = [feat for feat in current_features if feat != f]
             accuracy = evaluate_subset(temp_features)
             step_time = time.time() - step_start
-            print(f"Using feature(s) {temp_features} accuracy is {accuracy:.1f}% (Time: {step_time:.4f} sec)")
+            print(f"Using feature(s) {[x+1 for x in temp_features]} accuracy is {accuracy:.1f}% (Time: {step_time:.4f} sec)")
 
             if accuracy > best_accuracy_so_far:
                 best_accuracy_so_far = accuracy
@@ -192,8 +195,8 @@ def backward_elimination(total_features):
 
         level_time = time.time() - level_start
         print()
-        print(f"Removed feature {feature_to_remove_at_this_level} at this level.")
-        print(f"Feature set {current_features} was best, accuracy is {best_accuracy_so_far:.1f}% (Step Time: {level_time:.4f} sec)")
+        print(f"Removed feature {feature_to_remove_at_this_level + 1} at this level.")
+        print(f"Feature set {[x+1 for x in current_features]} was best, accuracy is {best_accuracy_so_far:.1f}% (Step Time: {level_time:.4f} sec)")
 
         if best_accuracy_so_far < best_overall_accuracy:
             print("(Warning, Accuracy has decreased!)")
@@ -205,8 +208,9 @@ def backward_elimination(total_features):
             print()
     
     total_time = time.time() - total_start
-    print(f"Finished search!! The best feature subset is {best_overall_set}, which has an accuracy of {best_overall_accuracy:.1f}% (Total time: {total_time:.4f} sec)")
-
+    print(f"Finished search!! The best feature subset is {[f+1 for f in best_overall_set]}, "
+      f"which has an accuracy of {best_overall_accuracy:.1f}% (Total time: {total_time:.4f} sec)")
+    
 def load_dataset(path): # [class] [feature1] [feature2] [feature3] ... [featureN] (PER FEATURE)
     data = []
     with open(path, "r") as f:
@@ -311,6 +315,8 @@ def main():
     # user_input = input().strip()
     # feature_subset_original = list(map(int, user_input.split()))
     # feature_subset = [f - 1 for f in feature_subset_original]
-    # evaluate_subset(global_dataset, feature_subset)
+    # evaluate_subset(feature_subset)
+
+
 
 main()
