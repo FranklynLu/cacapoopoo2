@@ -146,6 +146,92 @@ def evaluate_normalization_effect(small_raw, small_norm, large_raw, large_norm, 
 
     return small_raw_acc, small_norm_acc, large_raw_acc, large_norm_acc, titanic_raw_acc, titanic_norm_acc
 
+def Franklyn_Algorithm(total_features):
+    print("\nWelcome to Franklyn's SPEED-BOOSTED Feature Selection Algorithm")
+
+    accuracy_cache = {}  # memoization cache
+
+    def cached_eval(subset):
+        key = tuple(sorted(subset))
+        if key in accuracy_cache:
+            return accuracy_cache[key]
+        acc = evaluate_subset(subset)
+        accuracy_cache[key] = acc
+        return acc
+
+    total_start = time.time()
+
+    current = []
+    best_overall_set = []
+    best_overall_acc = cached_eval([])
+
+    print(f"Using no features, accuracy = {best_overall_acc:.2f}%")
+    print("Beginning accelerated search...\n")
+
+    # skip features threshold
+    SKIP_FACTOR = 0.90 # skip features 10% worse than current best
+
+    for level in range(total_features):
+        level_start = time.time()
+
+        print(f"--> Level {level+1}")
+
+        best_feature = None
+        best_acc = -1
+
+        skip_threshold = best_overall_acc * SKIP_FACTOR
+
+        for f in range(total_features):
+            if f in current:
+                continue
+
+            temp = current + [f]
+            step_start = time.time()
+
+            acc = cached_eval(temp)
+            step_time = time.time() - step_start
+
+            print(f"Using feature(s) {[x+1 for x in temp]}, "
+                  f"acc = {acc:.2f}%  (Time: {step_time:.4f}s)")
+
+            # SKIP BAD FEATURES
+            if acc < skip_threshold:
+                print(f"   → Skipped (below skip-threshold {skip_threshold:.2f}%)")
+                continue
+
+            if acc > best_acc:
+                best_acc = acc
+                best_feature = f
+
+        if best_feature is None:
+            print("No acceptable feature found, stopping early.")
+            break
+
+        current.append(best_feature)
+        level_time = time.time() - level_start
+
+        print(f"\nAdded feature {best_feature+1}")
+        print(f"Current set: {[x+1 for x in current]}, accuracy = {best_acc:.2f}%")
+        print(f"Level time: {level_time:.4f}s\n")
+
+        # update global best
+        if best_acc > best_overall_acc:
+            best_overall_acc = best_acc
+            best_overall_set = list(current)
+
+        # stops early if gain is very little
+        if abs(best_acc - best_overall_acc) < 0.001:
+            print("Accuracy gain too small → early stopping.")
+            break
+
+    total_time = time.time() - total_start
+
+    print("Finished search!")
+    print(f"Best feature subset = {[x+1 for x in best_overall_set]}")
+    print(f"Best accuracy = {best_overall_acc:.2f}%")
+    print(f"Total runtime = {total_time:.4f}s")
+
+    return best_overall_set, best_overall_acc
 
 
 def forward_selection(total_features):
@@ -356,9 +442,9 @@ def main():
     large_norm = normalize_dataset(large_data)
     titanic_norm = normalize_dataset(titanic_data)
 
-    sr, sn, lr, ln,tr,tn = evaluate_normalization_effect(
-        small_data, small_norm, large_data, large_norm, titanic_data, titanic_norm
-    )
+    # sr, sn, lr, ln,tr,tn = evaluate_normalization_effect(
+    #     small_data, small_norm, large_data, large_norm, titanic_data, titanic_norm
+    # )
 
     total_features_small = len(small_norm[0]) - 1 # 100 instances and 10 features
     total_features_large = len(large_norm[0]) - 1 # 1000 instances, and 40 features
@@ -367,6 +453,7 @@ def main():
     print("Type the number of the algorithm you want to run.")
     print("1) Forward Selection")
     print("2) Backward Elimination")
+    print("3) Franklyn's Algorithm")
     choice = int(input())
     print("Please enter dataset type.")
     print("1) Small Dataset")
@@ -404,8 +491,6 @@ def main():
     plt.tight_layout()
     plt.savefig("normalization_effect.png", dpi=300)
     plt.show()
-    # Plot them
-
     plot_feature_pair(large_norm,
                   feat_x=15,  # feature 3 (0-based index)
                   feat_y=12,  # feature 4
@@ -417,12 +502,10 @@ def main():
         forward_selection(total_features)
     elif choice == 2:
         backward_elimination(total_features)
+    elif choice == 3:
+        Franklyn_Algorithm(total_features)
     else:
         print("Ivalid choice")
         return
-    
-   
-
-
 
 main()
